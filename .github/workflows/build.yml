@@ -115,3 +115,29 @@ jobs:
       - name: Push the latest Docker image
         if: env.need_docker_build
         run: docker push jupiterone/peril:latest
+
+  container-scan:
+    name: Scan Container Images
+    runs-on: ubuntu-18.04
+    env:
+      IMAGE: alpine:3.15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Login to DockerHub Registry
+        if: env.need_docker_build
+        run: echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin docker.io
+      
+      - name: Pull down example image
+        run: docker pull ${{env.IMAGE}}
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{env.IMAGE}}"
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
